@@ -1,10 +1,10 @@
 build:
 	CGO_ENABLED=0 go build -a -installsuffix nocgo .
 
-docker:
+docker: build
 	docker build -t azkvbs .
 
-docker-push:
+docker-push: docker
 	docker tag -f azkvbs "colemickens/azkvbs:latest"
 	docker push "colemickens/azkvbs"
 

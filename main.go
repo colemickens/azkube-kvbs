@@ -59,8 +59,8 @@ func init() {
 
 	log.Println("decoding certificate pem... ")
 	block, _ := pem.Decode(certificateData)
-	if err != nil {
-		panic(err)
+	if block == nil {
+		panic("failed to decode a pem block from certificate pem")
 	}
 
 	log.Println("parsing certificate... ")
@@ -77,8 +77,8 @@ func init() {
 
 	log.Println("decoding private key pem... ")
 	block, _ = pem.Decode(privateKeyData)
-	if err != nil {
-		panic(err)
+	if block == nil {
+		panic("failed to decode a pem block from private key pem")
 	}
 
 	log.Println("parsing private key... ")
