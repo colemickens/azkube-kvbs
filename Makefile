@@ -5,6 +5,7 @@ docker:
 	docker build -t azkvbs .
 
 docker-push:
+	docker tag -f azkvbs "colemickens/azkvbs:latest"
 	docker push "colemickens/azkvbs"
 
 manual-test:
