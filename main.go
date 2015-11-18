@@ -12,18 +12,23 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/colemickens/azkvbs/Godeps/_workspace/src/github.com/Azure/go-autorest/autorest"
 	"github.com/colemickens/azkvbs/Godeps/_workspace/src/github.com/Azure/go-autorest/autorest/azure"
 )
 
-var cloudConfigPath string
+var cloudConfigPath string // flag
+var machineType string // flag
+var destinationDir string // flag
 
 var client *autorest.Client
 var config configStruct
 
 const vaultAPIVersion = "2015-06-01"
-const secretURLTemplate = "https://{vault-name}.vault.azure.net/secrets/{secret-name}/{secret-version}?api-version={api-version}"
+const secretURLTemplate = "https://{vault-name}.vault.azure.net/secrets/{secret-name}/{secret-version}"
+const vaultScopeURL = "https://vault.azure.net"
 
 type configStruct struct {
 	PrivateKeyPath  string `json:"privateKeyPath"`
@@ -72,6 +77,16 @@ func init() {
 		"cloudConfigPath",
 		"/etc/kubernetes/azure-config.json",
 		"path to the azure cloud config file used by kubernetes and this bootstrap tool")
+	flag.StringVar(
+		&machineType,
+		"machineType",
+		"",
+		"the type of the machine (master|minion). determines what secrets to bootstrap")
+	flag.StringVar(
+		&destinationDir,
+		"destinationDir",
+		"/etc/kubernetes",
+		"the directory to drop secrets in")
 	flag.Parse()
 
 	configFile, err := os.Open(cloudConfigPath)
@@ -115,7 +130,7 @@ func init() {
 		certificate,
 		privateKey,
 		config.TenantID,
-		azure.AzureResourceManagerScope)
+		vaultScopeURL)
 	if err != nil {
 		log.Fatalln("failed", err)
 		panic(err)
@@ -126,8 +141,7 @@ func init() {
 }
 
 func getSecret(secretName string) (*string, error) {
-	var p map[string]interface{}
-	p = map[string]interface{}{
+	p := map[string]interface{}{
 		"vault-name":     config.VaultName,
 		"secret-name":    secretName,
 		"secret-version": "",
@@ -136,9 +150,12 @@ func getSecret(secretName string) (*string, error) {
 		"api-version": vaultAPIVersion,
 	}
 
+	// TODO(colemickens): Why does is it not already replaced via pathParameters ( I'm guessing it only applies to the literal path and not hostname also)
+	secretURL := strings.Replace(secretURLTemplate, "{vault-name}", config.VaultName, -1)
+
 	req, err := autorest.Prepare(&http.Request{},
 		autorest.AsGet(),
-		autorest.WithBaseURL(secretURLTemplate),
+		autorest.WithBaseURL(secretURL),
 		autorest.WithPathParameters(p),
 		autorest.WithQueryParameters(q))
 	
@@ -177,18 +194,14 @@ func main() {
 	}
 
 	masterSecrets := map[string]string{
-		"ca-crt":                               "/etc/kubernetes/ca.crt",
-		"apiserver-crt":                        "/etc/kubernetes/apiserver.crt",
-		"apiserver-key":                        "/etc/kubernetes/apiserver.key",
-		"master-proxy-kubeconfig":              "/etc/kubernetes/master-proxy-kubeconfig",
-		"master-kubelet-kubeconfig":            "/etc/kubernetes/master-kubelet-kubeconfig",
-		"master-scheduler-kubeconfig":          "/etc/kubernetes/master-scheduler-kubeconfig",
-		"master-controller-manager-kubeconfig": "/etc/kubernetes/master-controller-manager-kubeconfig",
+		"ca-crt":                               "ca.crt",
+		"apiserver-crt":                        "apiserver.crt",
+		"apiserver-key":                        "apiserver.key",
+		"master-proxy-kubeconfig":              "master-proxy-kubeconfig",
+		"master-kubelet-kubeconfig":            "master-kubelet-kubeconfig",
+		"master-scheduler-kubeconfig":          "master-scheduler-kubeconfig",
+		"master-controller-manager-kubeconfig": "master-controller-manager-kubeconfig",
 	}
-
-	log.Println("starting up")
-
-	machineType := os.Args[1]
 
 	var secrets map[string]string
 	switch machineType {
@@ -207,7 +220,8 @@ func main() {
 			panic(err)
 		}
 
-		err = ioutil.WriteFile(secretPath, []byte(*secretValue), 0644)
+		secretDestinationPath := filepath.Join(destinationDir, secretPath)
+		err = ioutil.WriteFile(secretDestinationPath, []byte(*secretValue), 0644)
 		if err != nil {
 			// TODO(colemickens): retry?
 			panic(err)

@@ -8,9 +8,10 @@ docker-push: docker
 	docker tag -f azkvbs "colemickens/azkvbs:latest"
 	docker push "colemickens/azkvbs"
 
-manual-test:
-	docker run \
-		-v "`pwd`/testdata/waagent:/var/lib/waagent" \
-		-v "/etc/ssl/certs:/etc/ssl/certs" \
-		-v "`pwd`/testdata/kubernetes:/etc/kubernetes" \
-		"colemickens/azkvbs" "/azkvbs"
+
+
+quick-build:
+	go build .
+
+manual-test: quick-build
+	./azkvbs -cloudConfigPath=/home/cole/azkvbs_test/azure-config.json -machineType=master -destinationDir=/home/cole/azkvbs_test/output
