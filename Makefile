@@ -1,5 +1,5 @@
 build:
-	CGO_ENABLED=0 go build -a -installsuffix nocgo .
+	CGO_ENABLED=0 go build -a -tags netgo -installsuffix nocgo -ldflags '-w' .
 
 docker: build
 	docker build -t azkvbs .

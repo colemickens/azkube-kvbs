@@ -1,11 +1,13 @@
 package main
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -36,8 +38,40 @@ type secret struct {
 	Value string `json:"value"`
 }
 
+func parseRsaPrivateKey(path string) (*rsa.PrivateKey, error) {
+	privateKeyData, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatalln("failed", err)
+	}
+
+	block, _ := pem.Decode(privateKeyData)
+	if block == nil {
+		panic("failed to decode a pem block from private key pem")
+	}
+
+	privatePkcs1Key, errPkcs1 := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if errPkcs1 == nil {
+		return privatePkcs1Key, nil
+	}
+
+	privatePkcs8Key, errPkcs8 := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if errPkcs8 == nil {
+		privatePkcs8RsaKey, ok := privatePkcs8Key.(*rsa.PrivateKey)
+		if !ok {
+			return nil, fmt.Errorf("Pkcs8 contained non-RSA key. Expected RSA key.")
+		}
+		return privatePkcs8RsaKey, nil
+	}
+
+	return nil, fmt.Errorf("Failed to parse private key as Pkcs#1 or Pkcs#8. (%s). (%s).", errPkcs1, errPkcs8)
+}
+
 func init() {
-	flag.StringVar(&cloudConfigPath, "cloudConfigPath", "/etc/kubernetes/azure-config.json", "path to the azure cloud config file used by kubernetes and this bootstrap tool")
+	flag.StringVar(
+		&cloudConfigPath,
+		"cloudConfigPath",
+		"/etc/kubernetes/azure-config.json",
+		"path to the azure cloud config file used by kubernetes and this bootstrap tool")
 	flag.Parse()
 
 	configFile, err := os.Open(cloudConfigPath)
@@ -69,20 +103,8 @@ func init() {
 		panic(err)
 	}
 
-	log.Println("loading private key... ")
-	privateKeyData, err := ioutil.ReadFile(config.PrivateKeyPath)
-	if err != nil {
-		log.Fatalln("failed", err)
-	}
-
-	log.Println("decoding private key pem... ")
-	block, _ = pem.Decode(privateKeyData)
-	if block == nil {
-		panic("failed to decode a pem block from private key pem")
-	}
-
-	log.Println("parsing private key... ")
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	log.Println("parsing RSA key out of private key path")
+	privateKey, err := parseRsaPrivateKey(config.PrivateKeyPath)
 	if err != nil {
 		panic(err)
 	}
@@ -99,13 +121,12 @@ func init() {
 		panic(err)
 	}
 
-	client := &autorest.Client{}
+	client = &autorest.Client{}
 	client.Authorizer = spt
 }
 
 func getSecret(secretName string) (*string, error) {
 	var p map[string]interface{}
-	var req *http.Request
 	p = map[string]interface{}{
 		"vault-name":     config.VaultName,
 		"secret-name":    secretName,
@@ -115,11 +136,15 @@ func getSecret(secretName string) (*string, error) {
 		"api-version": vaultAPIVersion,
 	}
 
-	req, _ = autorest.Prepare(&http.Request{},
+	req, err := autorest.Prepare(&http.Request{},
 		autorest.AsGet(),
 		autorest.WithBaseURL(secretURLTemplate),
 		autorest.WithPathParameters(p),
 		autorest.WithQueryParameters(q))
+	
+	if err != nil {
+		panic(err)
+	}
 
 	resp, err := client.Send(req, http.StatusOK)
 	if err != nil {
