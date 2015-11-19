@@ -8,8 +8,6 @@ docker-push: docker
 	docker tag -f azkvbs "colemickens/azkvbs:latest"
 	docker push "colemickens/azkvbs"
 
-
-
 quick-build:
 	go build .
 

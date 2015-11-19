@@ -100,31 +100,26 @@ func init() {
 		panic(err)
 	}
 
-	log.Println("loading certificate... ")
 	certificateData, err := ioutil.ReadFile(config.CertificatePath)
 	if err != nil {
 		log.Fatalln("failed", err)
 	}
 
-	log.Println("decoding certificate pem... ")
 	block, _ := pem.Decode(certificateData)
 	if block == nil {
 		panic("failed to decode a pem block from certificate pem")
 	}
 
-	log.Println("parsing certificate... ")
 	certificate, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Println("parsing RSA key out of private key path")
 	privateKey, err := parseRsaPrivateKey(config.PrivateKeyPath)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Println("retrieve oauth token... ")
 	spt, err := azure.NewServicePrincipalTokenFromRsaKey(
 		config.ApplicationID,
 		certificate,
@@ -213,7 +208,10 @@ func main() {
 		log.Fatalln("don't know machine type")
 	}
 
+	log.Println("bootstrapping secrets for:", machineType)
+
 	for secretName, secretPath := range secrets {
+		log.Println("retrieving secret:", secretName)
 		secretValue, err := getSecret(secretName)
 		if err != nil {
 			// TODO(colemickens): retry?
@@ -221,6 +219,7 @@ func main() {
 		}
 
 		secretDestinationPath := filepath.Join(destinationDir, secretPath)
+		log.Println("writing secret:", secretDestinationPath)
 		err = ioutil.WriteFile(secretDestinationPath, []byte(*secretValue), 0644)
 		if err != nil {
 			// TODO(colemickens): retry?
