@@ -184,8 +184,8 @@ func getSecret(secretName string) (*string, error) {
 
 func main() {
 	minionSecrets := map[string]string{
-		"minion-proxy-kubeconfig":   "/etc/kubernetes/minion-proxy-kubeconfig",
-		"minion-kubelet-kubeconfig": "/etc/kubernetes/minion-kubelet-kubeconfig",
+		"minion-proxy-kubeconfig":   "minion-proxy-kubeconfig",
+		"minion-kubelet-kubeconfig": "minion-kubelet-kubeconfig",
 	}
 
 	masterSecrets := map[string]string{
