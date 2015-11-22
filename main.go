@@ -183,32 +183,30 @@ func getSecret(secretName string) (*string, error) {
 }
 
 func main() {
-	minionSecrets := map[string]string{
-		"minion-proxy-kubeconfig":   "minion-proxy-kubeconfig",
-		"minion-kubelet-kubeconfig": "minion-kubelet-kubeconfig",
+	secretMap := map[string]map[string]string{
+		"master": {
+			"ca-crt":                               "ca.crt",
+			"apiserver-crt":                        "apiserver.crt",
+			"apiserver-key":                        "apiserver.key",
+			"master-proxy-kubeconfig":              "master-proxy-kubeconfig",
+			"master-kubelet-kubeconfig":            "master-kubelet-kubeconfig",
+			"master-scheduler-kubeconfig":          "master-scheduler-kubeconfig",
+			"master-controller-manager-kubeconfig": "master-controller-manager-kubeconfig",
+		},
+		"minion": {
+			"minion-proxy-kubeconfig":   "minion-proxy-kubeconfig",
+			"minion-kubelet-kubeconfig": "minion-kubelet-kubeconfig",
+		},
+		"etcd": {
+
+		},
 	}
 
-	masterSecrets := map[string]string{
-		"ca-crt":                               "ca.crt",
-		"apiserver-crt":                        "apiserver.crt",
-		"apiserver-key":                        "apiserver.key",
-		"master-proxy-kubeconfig":              "master-proxy-kubeconfig",
-		"master-kubelet-kubeconfig":            "master-kubelet-kubeconfig",
-		"master-scheduler-kubeconfig":          "master-scheduler-kubeconfig",
-		"master-controller-manager-kubeconfig": "master-controller-manager-kubeconfig",
+	log.Println("bootstrapping secrets for", machineType)
+	secrets, ok := secretMap[machineType]
+	if !ok {
+		log.Fatalln("don't have a secret list for", machineType)
 	}
-
-	var secrets map[string]string
-	switch machineType {
-	case "master":
-		secrets = masterSecrets
-	case "minion":
-		secrets = minionSecrets
-	default:
-		log.Fatalln("don't know machine type")
-	}
-
-	log.Println("bootstrapping secrets for:", machineType)
 
 	for secretName, secretPath := range secrets {
 		log.Println("retrieving secret:", secretName)

@@ -5,14 +5,14 @@ build:
 	go build -a -tags netgo -installsuffix nocgo -ldflags '-w' .
 
 docker: build
-	docker build -t azkvbs .
+	docker build -t azkube-kvbs .
 
 docker-push: docker
-	docker tag -f azkvbs "colemickens/azkvbs:latest"
-	docker push "colemickens/azkvbs"
+	docker tag -f azkube-kvbs "colemickens/azkube-kvbs:latest"
+	docker push "colemickens/azkube-kvbs"
 
 manual-test: quick-build
-	./azkvbs \
-		-cloudConfigPath=/home/cole/azkvbs_test/azure-config.json \
-		-destinationDir=/home/cole/azkvbs_test/output \
+	./azkube-kvbs \
+		-cloudConfigPath=/home/cole/azkube-kvbs_test/azure-config.json \
+		-destinationDir=/home/cole/azkube-kvbs_test/output \
 		-machineType=master

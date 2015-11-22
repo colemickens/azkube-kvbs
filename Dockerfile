@@ -1,3 +1,3 @@
 FROM scratch
-ADD azkvbs /
-CMD ["/azkvbs"]
+ADD azkube-kvbs /
+CMD ["/azkube-kvbs"]
