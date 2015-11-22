@@ -1,0 +1,14 @@
+package: ""
+import:
+- package: github.com/Azure/go-autorest
+  vcs: git
+  repo: https://github.com/colemickens/go-autorest
+  version: 9bc220f64106638167bdaf117375dbee809ab152
+  subpackages:
+  - autorest
+- package: github.com/dgrijalva/jwt-go
+  version: 52c68d1293c6de749708778de956009490672f6e
+- package: golang.org/x/crypto
+  version: 575fdbe86e5dd89229707ebec0575ce7d088a4a6
+  subpackages:
+  - pkcs12
